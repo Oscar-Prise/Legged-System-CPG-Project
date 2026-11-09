@@ -1,0 +1,136 @@
+\section{Problem 1: Trunk control and apparent virtual pivots}
+\subsection*{1. Equation derivation (1.5 points)}
+Take $x$ to the right, $z$ upward, and the positive trunk angle $\phi$ to be the orientation whose hip-to-CoM unit vector is $(-\sin\phi,\cos\phi)$. This matches the torque sign in the supplied equations. The CoM, hip, and stance foot obey
+\begin{equation}
+ \vv r_H = \vv r_C+d(\sin\phi,-\cos\phi)^T,\qquad
+ \vv r=\vv r_H-\vv r_{FP}=(x_{rel},z_{rel})^T,\qquad
+ l=\|\vv r\|.
+ \label{eq:geometry}
+\end{equation}
+For a compressed spring of rest length $l_0$, define the nonnegative spring force $F_s=k\max(l_0-l,0)$. The spring contributes $\vv F_s=(F_s/l)\vv r$. A torque $\tau$ about the hip creates a reaction force perpendicular to the leg, $\vv F_\tau=(\tau/l^2)(z_{rel},-x_{rel})^T$, because the moment of that force around the stance foot is $x_{rel}F_{\tau,z}-z_{rel}F_{\tau,x}=-\tau$. Thus the total ground reaction on the runner is
+\begin{align}
+ \vv F_{\mathrm{GRF}} &=\frac{F_s}{l}\begin{bmatrix}x_{rel}\\z_{rel}\end{bmatrix}+
+ \frac{\tau}{l^2}\begin{bmatrix}z_{rel}\\-x_{rel}\end{bmatrix},\label{eq:GRF}\\[-0.3em]
+ F_x&=\frac{x_{rel}}{l}F_s+\frac{z_{rel}}{l^2}\tau,\qquad
+ F_z=\frac{z_{rel}}{l}F_s-\frac{x_{rel}}{l^2}\tau.\label{eq:components}
+\end{align}
+Translation of the CoM gives $m\ddot x=F_x$ and $m\ddot z=F_z-mg$. The hip lever arm about the CoM is $\vv r_H-\vv r_C=(d\sin\phi,-d\cos\phi)^T$, so its moment is
+\begin{equation}
+ (\vv r_H-\vv r_C)\times\vv F_{\mathrm{GRF}}
+ =d\sin\phi F_z+d\cos\phi F_x.
+\end{equation}
+Adding the directly applied hip torque gives exactly the specified articulated model:
+\begin{equation}
+\boxed{\;m\ddot x=F_x,\quad m\ddot z=F_z-mg,\quad
+J\ddot\phi=\tau+d(F_x\cos\phi+F_z\sin\phi).\;}
+\label{eq:EOM}
+\end{equation}
+The spring force and torque-induced perpendicular force belong in the stance leg-force computation; Eq.~\eqref{eq:EOM} belongs in the translational/rotational integration block. In flight, $F_s=\tau=F_x=F_z=0$.
+
+\subsection*{2. Load-modulated PD control (2 points)}
+With upright reference $\phi_{ref}=0$, the requested controller is
+\begin{equation}
+\boxed{\quad\tau_{PD}=\frac{F_s}{m}\bigl[K_p(\phi_{ref}-\phi)-K_d\dot\phi\bigr].\quad}
+\label{eq:PD}
+\end{equation}
+The implementation uses $K_p=200$, $K_d=30$ in the force-scaled convention of Eq.~\eqref{eq:PD}; these are illustrative numerical gains rather than values provided by the assignment. The load factor causes the commanded torque to rise during stance compression and decay to zero at liftoff. An unmodulated PD controller could demand hip torque in flight and near zero-load events, causing discontinuous or physically ineffective contact forces. Load modulation also adapts the feedback magnitude to changing normal support, though it does not automatically guarantee stability.
+
+\subsection*{3. Simulink algebraic loop (1 point)}
+Insert a \textbf{Memory} block in the feedback path from the computed spring-force signal to the load-modulated PD block. In a fixed-step discrete implementation, a \textbf{Unit Delay} (one integration step) also breaks direct feedthrough. An alternative is to separate the computation of $F_s$ (a function of geometry alone) from the force block receiving $\tau$ so that the solver has no block-level algebraic loop. In the stand-alone numerical implementation, $F_s$ is computed before $\tau$ explicitly and therefore needs no artificial delay.
+
+\subsection*{4. Virtual pivot point torque (5 points)}
+The pivot is $h$ above the CoM along the trunk axis, so its position relative to the stance foot is
+\begin{align}
+\vv r_P-\vv r_{FP}
+&=\vv r_H-\vv r_{FP}-(d+h)(\sin\phi,-\cos\phi)^T\\
+&=\boxed{\;\vv p=\begin{bmatrix}x_{rel}-(d+h)\sin\phi\\[0.1em] z_{rel}+(d+h)\cos\phi\end{bmatrix}.\;}
+\label{eq:p}
+\end{align}
+Collinearity requires $\vv p\times\vv F_{\mathrm{GRF}}=p_xF_z-p_zF_x=0$. Substitution from Eq.~\eqref{eq:components} yields
+\begin{equation}
+0=\frac{F_s}{l}(p_x z_{rel}-p_z x_{rel})
+ -\frac{\tau}{l^2}(p_x x_{rel}+p_z z_{rel}),
+\end{equation}
+so that
+\begin{equation}
+\boxed{\;\tau_{VPP}=
+\frac{F_s l (p_xz_{rel}-p_zx_{rel})}{p_xx_{rel}+p_zz_{rel}}
+=-\frac{F_s l(d+h)(x_{rel}\cos\phi+z_{rel}\sin\phi)}
+ {l^2+(d+h)(z_{rel}\cos\phi-x_{rel}\sin\phi)}.\;}
+\label{eq:VPP}
+\end{equation}
+The implementation takes $h=\SI{0.2}{m}$. The denominator must be nonzero: a singular configuration cannot be regularized without relaxing exact geometric VPP behavior. This formulation commands a torque determined by the instantaneous spring force and leg/trunk geometry, with no freely tuned proportional or derivative gains.
+
+\subsection*{5. Influence of pivot height (1.5 points)}
+For a GRF line through $P$, its total moment about the CoM is equivalently the moment of an applied force through $P$:
+\begin{equation}
+J\ddot\phi=-h\bigl(F_x\cos\phi+F_z\sin\phi\bigr).
+\label{eq:pivotmoment}
+\end{equation}
+For nearly vertical contact force and small $\phi$, this includes a restoring term $-hF_z\phi$. Thus $h>0$ supplies a restoring geometric tendency; $h=0$ eliminates this geometric pitch moment; and $h<0$ reverses its sign and can amplify trunk lean. The actual gait is a hybrid nonlinear system, so bigger positive $h$ need not improve stability: overly strong pitch reactions can drive oscillations or falls.
+
+\begin{figure}[ht]
+\centering\includegraphics[width=0.97\linewidth]{figures/vpp_height_sensitivity.pdf}
+\caption{Pitch responses to prescribed pivot heights, all starting from the same mild initial tilt ($\phi_0=-0.02$ rad). Individual curves end if pitch exceeds $\pi$ radians or the CoM drops below the safety termination height; the truncation is a failure in this simplified simulation, not proof of a general physiological stability boundary.}
+\label{fig:h_sweep}
+\end{figure}
+For the chosen numerical setup, negative $h$ caused the run to terminate early (approximately $\SI{0.96}{s}$ for $h=-0.2$ and $\SI{1.44}{s}$ for $h=-0.1$). The $h=+0.4$ case also terminated early, consistent with excessive response. These are simulation observations for the documented hybrid model, not universal cutoff values.
+
+\subsection*{6. Reducing pitch wobble (1 point)}
+Add an angular-velocity damping term, preferably load-modulated so that it vanishes when the spring unloads:
+\begin{equation}
+\boxed{\quad\tau=\tau_{VPP}-K_{D,VPP}\frac{F_s}{m}\dot\phi.\quad}
+\label{eq:damping}
+\end{equation}
+Here $K_{D,VPP}=10$ is used for illustration. Damping dissipates pitch motion, but its additional force contribution is generally \emph{not} collinear with $\vv p$. Consequently, the GRF lines no longer meet at the originally prescribed pivot exactly; the measured effective pivot can move and become dispersed.
+
+\subsection*{7. Ground-reaction vectors in body coordinates (2 points)}
+\paragraph{Coordinate transformation and reproducible simulation.}
+With the CoM at the origin, the trunk-fixed basis vectors are $\vv e_{xb}=(\cos\phi,\sin\phi)^T$ and $\vv e_{zb}=(-\sin\phi,\cos\phi)^T$. Define
+\begin{equation}
+R_{wb}=\begin{bmatrix}\cos\phi&\sin\phi\\-\sin\phi&\cos\phi\end{bmatrix},\quad
+\vv r_{FP}^{b}=R_{wb}(\vv r_{FP}^{w}-\vv r_C^{w}),\quad
+\vv F^{b}=R_{wb}\vv F^{w}.
+\end{equation}
+For each stance sample, the plotted line is $\vv r^b(s)=\vv r_{FP}^b+s\hat{\vv F}^b$. To estimate a common intersection, minimize squared perpendicular line distances. With $\vv n_i=(-\hat F_{z,i}^b,\hat F_{x,i}^b)^T$,
+\begin{equation}
+\vv q_{fit}=\underset{\vv q}{\arg\min}\sum_i
+\bigl[\vv n_i^T(\vv q-\vv r_{FP,i}^{b})\bigr]^2,
+\qquad e_{RMS}=\sqrt{\tfrac{1}{N}\sum_i\bigl[\vv n_i^T(\vv q_{fit}-\vv r_{FP,i}^{b})\bigr]^2}.
+\label{eq:pivotfit}
+\end{equation}
+The simulations retain the running parameters from the course \texttt{m08\_params.m}: $m=\SI{70}{kg}$, $k=\SI{20000}{N/m}$, $l_0=\SI{1}{m}$, attack angle $68^\circ$, $v_x(0)=\SI{5}{m/s}$, $g=\SI{9.81}{m/s^2}$, and $\Delta t=\SI{1e-4}{s}$. Added articulated parameters are $d=\SI{0.2}{m}$ and $J=\SI{3.5}{kg.m^2}$. The course hip height of $\SI{1.1}{m}$ is retained, meaning $z_C(0)=1.1+d\cos\phi_0$ with $\phi_0=-0.02$ rad. RK4 time integration and a documented single-leg touchdown/liftoff rule are used; this is a stand-alone model initialized from the course parameters, \emph{not} an edited course Simulink file.
+
+\begin{figure}[ht]
+\centering\includegraphics[width=\linewidth]{figures/grf_pivots.pdf}
+\caption{Selected stance-phase ground-reaction \emph{lines of action} in the trunk-fixed frame. Black circle: CoM; red star: commanded $h=\SI{0.2}{m}$ pivot; green cross: least-squares effective pivot estimated using all sufficiently loaded stance samples over the full 4-second simulation. The VPP lines intersect exactly at $(0,0.2)$ m; PD exhibits an approximate but non-identical intersection near $(0,-0.119)$ m.}
+\label{fig:grf}
+\end{figure}
+\begin{table}[ht]
+\centering
+\caption{Numerical pivot estimates. Samples with $F_s>\SI{100}{N}$ were retained.}
+\label{tab:pivots}
+\begin{tabular}{lrrrr}\toprule
+Controller&$N$ samples&$q_x$ (m)&$q_z$ (m)&$e_{RMS}$ (m)\\\midrule
+Geometric VPP&15,816&0.0000&0.2000&$6.14\times10^{-16}$\\
+Load-modulated PD&15,003&$-0.00946$&$-0.11933$&0.03316\\
+VPP + damping&17,285&$-0.00613$&0.11207&0.01980\\\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[ht]
+\centering\includegraphics[width=\linewidth]{figures/pitch_comparison.pdf}
+\caption{Pitch trajectories for exact VPP, damped VPP ($K_{D,VPP}=10$), and load-modulated PD ($K_p=200,K_d=30$). The controller with damping exhibits less pitch oscillation over this simulated interval, while losing the exact prescribed VPP intersection.}
+\label{fig:pitch}
+\end{figure}
+\paragraph{Interpretation.}
+The exact VPP model produces a pivot at $(0,h)$ by construction. The PD model does \emph{not} produce exact line concurrence (about \SI{3.3}{cm} RMS scatter), but its GRFs cluster around a common location even though its controller contains no VPP target. This supports the limited \emph{possibility} that apparent VPP-like patterns can emerge as an observational result of load-aware feedback. It does not demonstrate that animals actually use PD control, nor does it establish that every PD gain choice produces a pivot above the CoM: in this trial, the PD effective pivot lies \emph{below} the CoM. Kinematics, controller gains, and stance selection influence the fitted point.
+
+\subsection*{8. Optional walking extension (2 points): CoP derivation and scope}
+When both feet contact the ground, let $\vv F_R=(F_{Rx},F_{Rz})^T$, $\vv F_L=(F_{Lx},F_{Lz})^T$ and their ground-plane positions be $x_{FP,R},x_{FP,L}$. The resultant force and its effective ground-line origin are
+\begin{equation}
+\vv F_\Sigma=\vv F_R+\vv F_L,\qquad
+\boxed{\ x_{CoP}=\frac{x_{FP,R}F_{Rz}+x_{FP,L}F_{Lz}}{F_{Rz}+F_{Lz}},\quad z_{CoP}=0.\ }
+\label{eq:cop}
+\end{equation}
+To compare walking with running, replace each individual force line by $\vv r_{CoP}^b+s\vv F_\Sigma^b$ during double support, use the walking settings ($k=\SI{10000}{N/m}$, attack angle $65^\circ$, $v_x(0)=\SI{1.1}{m/s}$), and fit the effective pivot by Eq.~\eqref{eq:pivotfit}. In single support, the CoP is the stance foot. The resultant line in double support need not pass through either individual stance foot and its direction may depend strongly on the support-force distribution. Thus walking can produce a different apparent VPP height and/or more scatter than running under the same trunk feedback. \textbf{Limitation:} the provided code implements the required \emph{running} model only; no verified two-contact walking simulation was performed, so no numerical walking-versus-running pivot difference is asserted. Equation~\eqref{eq:cop} is the correct analytic method for the optional extension.

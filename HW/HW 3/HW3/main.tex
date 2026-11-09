@@ -1,0 +1,76 @@
+\documentclass[11pt,letterpaper]{article}
+\usepackage[margin=0.82in]{geometry}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{graphicx,booktabs,array}
+\usepackage{siunitx}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{newtxtext,newtxmath} % Times-like font, appropriate for 11 pt proposal
+\usepackage{microtype}
+\usepackage{tabularx,booktabs,array}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
+\sisetup{detect-all}
+\title{R16868 Legged Systems\\Problem Set 3: Body Articulation}
+\author{Jinwoo Hwang, Ilseung Park}
+\date{October 2026}
+\begin{document}
+\maketitle
+\input{sections/problem1}
+\clearpage
+
+\section{Project Proposal}
+
+\subsection{Motivation}
+The metatarsophalangeal (MTP) joint allows the forefoot to bend during late stance, shaping heel-to-toe rollover and push-off. Yet many simplified legged robots and walking models use rigid feet. Prior work suggests that toe stiffness can influence walking mechanics and effort~\cite{cho2025,sun2016}, but the relative value of passive articulation and actively controlled toe torque remains dependent on the controller and walking conditions. The key question is: \emph{when does adding a toe joint improve walking, and when is the extra actuation worth its complexity?}
+
+We will test three otherwise identical sagittal-plane bipeds: (i) a rigid foot with the toe hinge locked, (ii) a passive toe with a torsional spring and damper, and (iii) an actuated toe with the same passive elements plus reflex-based torque. We hypothesize that moderate toe compliance can improve rollover and reduce ankle demand, while active toe torque may improve recovery from disturbances at the expense of additional actuator work. These effects will be measured rather than assumed.
+
+\subsection{Planned Effort}
+\textbf{Model and controller.} We will develop a two-dimensional biped in MATLAB/Simulink with a torso, bilateral thigh and shank links, and ankle-foot-toe assemblies. Each foot will have heel, forefoot, and toe-tip ground contacts. The articulated toe will use a passive torsional spring and damper; the actuated condition will add bounded reflex torque. Locking the same toe joint will create the rigid-foot baseline, preserving total foot length, segment masses, and contact geometry. The model will use planar rigid-body dynamics and compliant ground contact.
+Metabolic cost will be approximated using a joint-work-based estimator
+with fixed mechanical efficiency assumptions.
+
+A reflex-inspired controller will use stance loading and trunk-angle feedback for support, ankle torque for propulsion, and phase-dependent hip/knee feedback for swing-leg placement, following the general neuromechanical control approach of Geyer and Herr~\cite{geyer2010}. In the actuated-toe condition, late-stance toe loading and toe angle/velocity will drive a bounded push-off response. Controller structure and feedback inputs will be held constant across conditions. We will first compare identical baseline gains to isolate morphology, then permit limited, equally budgeted gain tuning to assess achievable performance.
+
+\textbf{Evaluation.} After establishing periodic level walking, we will sweep passive toe stiffness and toe-reflex gain.At matched walking speeds, we will compare steady-state rollover
+(center-of-pressure progression and toe angle), ankle and toe
+mechanical work, positive actuator work per distance, estimated
+metabolic cost of transport, and gait failure rate. We will introduce brief torso impulses at consistent gait phases and quantify successful steps and recovery of step timing/forward speed. Toe actuator work will be included when comparing energetic costs. We will report both nominal performance and robustness rather than treating greater toe motion as inherently beneficial.
+
+\subsection*{Weekly timetable}
+\vspace{-0.65em}
+\renewcommand{\arraystretch}{1.10}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{1.05in}X@{}}
+\toprule
+\textbf{Dates} & \textbf{Milestone and work}\\
+\midrule
+Oct 21--27 & Construct and validate the planar walker, toe hinge, and foot-ground contact; test rigid- and passive-foot dynamics.\\
+Oct 28--Nov 3 & Implement and tune reflex-inspired hip/knee/ankle control; obtain repeatable rigid-foot level walking.\\
+Nov 4--10 & Add passive toe stiffness sweep and actuated toe reflex; verify comparable gait speeds and contact mechanics.\\
+Nov 11--17 & Run matched-speed and perturbation experiments; analyze work, rollover, and robustness; prepare report and demonstration.\\
+\bottomrule
+\end{tabularx}
+\vspace{0.3em}
+
+\textbf{Contingency.} If fully autonomous walking is not stable by Week 2, we will simplify the controller and use a stabilizing torso support or prescribed-speed pelvis guidance, retaining dynamic leg/foot contact. In that case, the primary analysis will focus on rollover and joint work; unsupported claims about free-walking stability will be avoided. If active toe control remains unstable, the passive-versus-rigid comparison will remain the core deliverable.
+
+\subsection{Intellectual Merit}
+This project will isolate how foot morphology, passive compliance, and fast sensory feedback interact in a hybrid dynamical walking system. Its contribution is a controlled comparison of mechanical and control strategies, not a claim that toe stiffness or toe actuation has never been investigated. By holding geometry and operating conditions comparable, the study can clarify whether improvements arise from compliant rollover, injected toe work, or reflexive adaptation. It will also develop practical understanding of contact mechanics, gait stability, energetic accounting, and neuromechanical feedback control.
+
+\subsection{Broader Impact}
+If successful, the results can inform toe-joint design decisions for prosthetic feet, assistive devices, and energy-efficient legged robots: when passive compliance may be sufficient and when active control offers additional value. A reproducible MATLAB/Simulink teaching model will also support hands-on training in multibody dynamics, reflex control, and comparative simulation for future biomechanics and robotics students. As a simplified computational study, it will generate design hypotheses rather than immediate clinical recommendations.
+
+\vspace{-0.35em}
+\begin{thebibliography}{9}
+\setlength{\itemsep}{0pt}
+\setlength{\parskip}{0pt}
+\small
+\bibitem{cho2025} Cho, K., Lee, K.-W., and Hur, P. (2025). ``Optimizing toe joint stiffness to improve human-like walking.'' \emph{Scientific Reports}, 15, 33268.
+\bibitem{sun2016} Sun, S., Huang, Y., and Wang, Q. (2016). ``Adding adaptable toe stiffness affects energetic efficiency and dynamic behaviors of bipedal walking.'' \emph{Journal of Theoretical Biology}, 388, 108--118.
+\bibitem{geyer2010} Geyer, H., and Herr, H. (2010). ``A muscle-reflex model that encodes principles of legged mechanics produces human walking dynamics and muscle activities.'' \emph{IEEE Transactions on Neural Systems and Rehabilitation Engineering}, 18(3), 263--273.
+\end{thebibliography}
+
+\end{document}

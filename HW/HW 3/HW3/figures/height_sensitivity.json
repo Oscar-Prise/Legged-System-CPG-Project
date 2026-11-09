@@ -1,0 +1,26 @@
+{
+  "-0.2": {
+    "endtime": 0.9565,
+    "max_abs_pitch_degrees": 179.99141698958354
+  },
+  "-0.1": {
+    "endtime": 1.4378,
+    "max_abs_pitch_degrees": 179.96502091287294
+  },
+  "0.0": {
+    "endtime": 2.1999,
+    "max_abs_pitch_degrees": 1.1459155902616465
+  },
+  "0.1": {
+    "endtime": 2.1999,
+    "max_abs_pitch_degrees": 2.400494839222875
+  },
+  "0.2": {
+    "endtime": 2.1999,
+    "max_abs_pitch_degrees": 16.17339292315201
+  },
+  "0.4": {
+    "endtime": 1.3304,
+    "max_abs_pitch_degrees": 148.82824714808967
+  }
+}
