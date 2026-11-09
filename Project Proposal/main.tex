@@ -1,0 +1,92 @@
+\documentclass[11pt]{article}
+\usepackage[letterpaper,margin=0.75in]{geometry}
+\usepackage{amsmath}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+\usepackage{textcomp}
+
+\titleformat{\section}{\large\bfseries}{}{0pt}{}
+\titlespacing*{\section}{0pt}{8pt}{3pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+\setlist{itemsep=1pt,topsep=2pt}
+\pagestyle{empty}
+
+\begin{document}
+
+{\Large\bfseries Can a CPG-timed push-off keep two coupled walkers walking?}
+
+\vspace{4pt}
+\textbf{Course parts:} I (fundamental gait models) + III (human system) \textperiodcentered{}
+\textbf{Type:} novel question \textperiodcentered{} \textbf{Team size:} 3
+
+\section*{Motivation}
+
+When two people carry something together, they often fall into step without planning it. Lanini et al.~[1] recorded pairs carrying a stretcher-like object and found that 40.9\% of the synchronized stretches fall into pace ($\sim$0\textdegree{} lag, where the two people step together), 36.4\% fall into trot ($\sim$180\textdegree{} lag, where the two people step half a stride apart), and 22.7\% fall into diagonal-sequence pattern ($\sim$225\textdegree{} lag).
+
+They modeled the pair as two 2-D spring-mass walkers [2], holding the object through spring-damper arms. The model reproduces pace- and trot-like synchrony but cannot keep walking: the arm dampers dissipate energy and nothing puts it back. Over one stride $T$, any periodic gait must satisfy
+\begin{equation*}
+\sum_i \oint_T P_{\mathrm{act},i}\,dt \;=\; \sum_i \oint_T b_i\,\dot L_i^{\,2}\,dt
+\end{equation*}
+where $b_i$ is arm damping and $L_i$ arm length. Without actuation the left side is zero, so the arms must stop moving and both walkers move identically. That is why the passive model only finds slowly decaying, approximately periodic gaits, and never the diagonal-sequence pattern, which needs a lasting phase offset between partners. The authors point to energy input from ``a specific control architecture'' as the missing piece.
+
+\textbf{Idea.} Give each walker a central pattern generator (CPG) and a small point-mass foot on each spring leg. The CPG is a phase oscillator that sets the walker's rhythm, resets at touchdown, and drives both halves of the step: a push-off in late stance (a brief leg extension that puts energy back in) and the swing of the foot to where the next step lands.
+\begin{equation*}
+\dot\phi_i = \omega_i - \sigma\,N_i\cos\phi_i, \qquad \phi_i \leftarrow \phi_{\mathrm{TD}} \ \text{at touchdown}
+\end{equation*}
+The feedback term is the load-feedback rule [3], with $N_i$ the ground reaction force on walker $i$; the touchdown reset follows [4]. The CPG also tracks which leg is swinging, so pace, trot and diagonal-sequence can be told apart in 2-D. Because the foot has mass, it loses energy at every touchdown, which gives the walker a built-in energy sink.
+
+\textbf{Hypotheses}
+\begin{enumerate}
+  \item \textbf{H1.} With the CPG adding energy at push-off and the feet losing energy when they land, each walker settles at one steady speed and returns to it after a disturbance (a limit cycle).
+  \item \textbf{H2.} Joined by the object, the two walkers fall into one shared rhythm (entrainment). Matched CPGs give pace or trot; mismatched CPGs give a lag that grows with the mismatch, possibly reaching diagonal-sequence ($\sim$225\textdegree{}), until the pair can no longer stay in step.
+\end{enumerate}
+
+\section*{Plan}
+
+All work is in 2-D simulation (Simulink), in three stages:
+\begin{enumerate}
+  \item \textbf{Passive baseline.} Rebuild Lanini's paired SLIP model as our comparison: each walker follows [2] ($m = 80$~kg, $l_0 = 1$~m, $\alpha_0 = 69$\textdegree{}, $k = 14$~kN/m); arms and object follow Lanini et al.\ ($k = 3.5\times10^3$~N/m, $b = 320$~N$\cdot$s/m, 8~kg). Measure the energy the arms dissipate per step.
+  \item \textbf{One CPG walker.} Add a point-mass foot to each spring leg, plus the oscillator, touchdown reset, push-off and CPG-driven swing. Choose a small foot mass and find a stable limit cycle (return-map eigenvalues inside the unit circle). Tests H1.
+  \item \textbf{Two coupled CPG walkers.} Couple two of these walkers through the object and sweep the CPG frequency mismatch and the arm stiffness and damping. Record whether they lock, at what phase lag, and which gait that lag matches. Tests H2.
+\end{enumerate}
+
+\textbf{If it does not work as planned:} if push-off timing alone does not lock the pair, feed the arm force into each oscillator as well. If the CPG-driven swing makes the walker fall, fix the touchdown angle as in [2] and keep the CPG for push-off only.
+
+\vspace{2pt}
+\begin{tabular}{@{}l l p{0.6\textwidth}@{}}
+\toprule
+\textbf{Week} & \textbf{Dates (2026)} & \textbf{Milestone} \\
+\midrule
+1 & Oct 26 -- Nov 1  & Passive pair rebuilt; arm loss per step measured \\
+2 & Nov 2 -- Nov 8   & One CPG walker with point-mass feet on a stable limit cycle (H1) \\
+3 & Nov 9 -- Nov 15  & Two coupled CPG walkers walk steadily together \\
+4 & Nov 16 -- Nov 22 & Mismatch sweep and gait map (H2); report and presentation \\
+\bottomrule
+\end{tabular}
+
+\section*{Intellectual merit}
+
+We test whether a simple rhythmic energy source, with no high-level planning, is enough to explain how two walkers coordinate, and connect entrainment (whether the pair locks, and how the lag depends on the pace difference) to a real mechanical link. For us, it is hands-on practice with hybrid walking dynamics, CPG design and return-map stability.
+
+\section*{Broader impact}
+
+The same setup, two rhythmic walkers joined by a soft link, shows up whenever machines move with people. An exoskeleton is strapped to its user through soft tissue, and an oscillator-based exoskeleton shortened users' own gait cycle from 1.24~s in free walking to 1.14~s under high assistance [5]. Robots that carry stretchers or furniture with a person are coupled through the load, and legged robots can coordinate their legs through forces in the body alone [3]. A simple model of when coupled walkers lock, and where the energy has to come from, gives designers of these systems a starting point.
+
+\section*{References}
+{\small
+\begin{enumerate}[label={[\arabic*]},leftmargin=*,itemsep=0pt]
+  \item Lanini J, Duburcq A, Razavi H, Le Goff CG, Ijspeert AJ (2017). Interactive locomotion: Investigation and modeling of physically-paired humans while walking. \textit{PLOS ONE} 12(9): e0179989. \href{https://doi.org/10.1371/journal.pone.0179989}{doi}
+  \item Geyer H, Seyfarth A, Blickhan R (2006). Compliant leg behaviour explains basic dynamics of walking and running. \textit{Proc.\ R.\ Soc.\ B} 273: 2861--2867. \href{https://doi.org/10.1098/rspb.2006.3637}{doi}
+  \item Owaki D, Ishiguro A (2017). A quadruped robot exhibiting spontaneous gait transitions from walking to trotting to galloping. \textit{Scientific Reports}. \href{https://pmc.ncbi.nlm.nih.gov/articles/PMC5428244}{PMC}
+  \item Aoi S, Tsuchiya K (2007). Adaptive behavior in turning of an oscillator-driven biped robot. \textit{Autonomous Robots} 23: 37--57. \href{https://doi.org/10.1007/s10514-007-9029-8}{doi}
+  \item Ronsse R et al.\ (2011). Oscillator-based assistance of cyclical movements: model-based and model-free approaches. \textit{Med.\ Biol.\ Eng.\ Comput.} 49: 1173--1185. \href{https://doi.org/10.1007/s11517-011-0816-1}{doi}
+\end{enumerate}
+}
+
+\end{document}
