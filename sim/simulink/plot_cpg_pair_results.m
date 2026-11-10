@@ -8,6 +8,8 @@ t   = P.Time;  pos = squeeze(P.Data);  vel = squeeze(V.Data);  phi = squeeze(PH.
 if size(pos, 1) ~= numel(t), pos = pos.'; vel = vel.'; phi = phi.'; end
 tdd = squeeze(TD.Data);  if size(tdd, 1) ~= numel(TD.Time), tdd = tdd.'; end
 Eloss = squeeze(EL.Data);  if size(Eloss, 1) ~= numel(EL.Time), Eloss = Eloss.'; end
+WK = ts('work_log');  work = squeeze(WK.Data);  if size(work, 1) ~= numel(WK.Time), work = work.'; end
+% work = [push-off work, hip work, leg losses at events (foot impacts / leftover spring), swing-foot energy]
 nW = mp.nW;
 
 % touchdown times of leg 1 of each walker
@@ -28,7 +30,9 @@ for i = 1:nW
         fprintf('walker %d: %d steps, last step %.4f s, speed over last 4 steps %.3f m/s\n', i, numel(tTDall{i}), Ti(end), v);
     end
 end
-fprintf('energy lost: arms %.3f J, leg dampers %.2f J\n', Eloss(end, 1), Eloss(end, 2));
+fprintf('energy lost: arms %.3f J, leg dampers %.2f J, at touchdown/take-off %.2f J\n', ...
+        Eloss(end, 1), Eloss(end, 2), work(end, 3));
+fprintf('energy put in: push-off %.2f J, hip (swing) %.2f J\n', work(end, 1), work(end, 2));
 
 % stride phase lag, homologous legs (0 = pace, 180 = trot, ~225 = diagonal sequence; Lanini 2017)
 lag = [];  tl = [];
@@ -48,8 +52,9 @@ subplot(2, 3, 1); plot(t, vel(:, 1:2:2*nW), 'LineWidth', 1.2); grid on;
 xlabel('time [s]'); ylabel('dx/dt [m/s]'); title('Forward speed');
 subplot(2, 3, 2); plot(t, pos(:, 2:2:2*nW), 'LineWidth', 1.2); grid on; xlim(max(t(end) - 3, 0) + [0 3]);
 xlabel('time [s]'); ylabel('z [m]'); title('CoM height (last 3 s)');
-subplot(2, 3, 3); plot(EL.Time, Eloss, 'LineWidth', 1.5); grid on;
-xlabel('time [s]'); ylabel('[J]'); legend({'arm dampers', 'leg dampers'}, 'Location', 'northwest'); title('Energy lost');
+subplot(2, 3, 3); plot(EL.Time, Eloss, WK.Time, work(:, [3 1 2]), 'LineWidth', 1.5); grid on;
+xlabel('time [s]'); ylabel('[J]'); title('Energy out (losses) and in (actuators)');
+legend({'arm dampers', 'leg dampers', 'foot impacts + take-off', 'push-off work', 'hip work'}, 'Location', 'northwest');
 subplot(2, 3, 4); plot(t, phi(:, 1:nW), '.'); grid on;
 xlabel('time [s]'); ylabel('\phi [rad]'); title('CPG phase (resets at touchdown)');
 subplot(2, 3, 5);

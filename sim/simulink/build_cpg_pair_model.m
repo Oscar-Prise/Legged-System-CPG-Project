@@ -46,6 +46,8 @@ set_fcn_code([mdl '/Leg and Arm Forces'], fullfile(here, 'sp_eom_block.m'));
 
 % stop on a fall
 add_block('simulink/Sinks/Stop Simulation', [mdl '/Stop if fallen'], 'Position', [480 100 510 130]);
+% the discrete-state output (used only by sp_start_state outside Simulink) ends here
+add_block('simulink/Sinks/Terminator', [mdl '/state (unused)'], 'Position', [480 150 500 170]);
 
 % animation (Level-2 MATLAB S-function, like m07_anim in HW2)
 add_block('simulink/User-Defined Functions/Level-2 MATLAB S-Function', [mdl '/Animation'], ...
@@ -65,7 +67,8 @@ logs = {'pos_log',   'Integrator pos/1',     10, [880 220 940 240];
         'td_log',    'Gait Logic and CPG/4',  1, [880 380 940 400];
         'grf_log',   'Leg and Arm Forces/2', 10, [880 420 940 440];
         'Farm_log',  'Leg and Arm Forces/3', 10, [880 460 940 480];
-        'Eloss_log', 'Integrator losses/1',  10, [880 500 940 520]};
+        'Eloss_log', 'Integrator losses/1',  10, [880 500 940 520];
+        'work_log',  'Gait Logic and CPG/5', 10, [880 540 940 560]};
 for k = 1:size(logs, 1)
     add_block('simulink/Sinks/To Workspace', [mdl '/' logs{k,1}], 'VariableName', logs{k,1}, ...
               'SaveFormat', 'Timeseries', 'Decimation', num2str(logs{k,3}), 'Position', logs{k,4});
@@ -83,8 +86,10 @@ L = {'Integrator pos/1',       'ZOH pos/1';
      'Integrator vel/1',       'Integrator pos/1';
      'Leg and Arm Forces/4',   'Integrator losses/1';
      'Gait Logic and CPG/3',   'Stop if fallen/1';
+     'Gait Logic and CPG/6',   'state (unused)/1';
      'Integrator pos/1',       'Animation/1';
      'Gait Logic and CPG/1',   'Animation/2';
+     'Gait Logic and CPG/2',   'Animation/3';
      'Integrator vel/1',       'Velocities/1';
      'Gait Logic and CPG/2',   'CPG phase/1';
      'Leg and Arm Forces/2',   'GRF/1';
@@ -105,9 +110,10 @@ set_param(mdl, 'InitFcn',    'if ~exist(''mp'', ''var''), cpg_pair_params; end')
 
 try
     note = Simulink.Annotation([mdl '/note']);
-    note.Text = sprintf(['To switch stage:  preset = ''stage2_single'';  cpg_pair_params   then Run.\n' ...
+    note.Text = sprintf(['To switch:  preset = ''stage3_pair''; legmodel = ''damper''; pairtype = ''different''; lag0 = 90;  cpg_pair_params   then Run.\n' ...
                          'Presets: stage1_pair (passive Lanini pair), stage2_single (one CPG walker),\n' ...
-                         'stage3_pair (two CPG walkers).  After a run:  plot_cpg_pair_results']);
+                         'stage3_pair (two CPG walkers).  Leg models: damper, footmass.\n' ...
+                         'After a run:  plot_cpg_pair_results']);
     note.Position = [40 380 560 440];
 catch
 end
