@@ -13,6 +13,8 @@
 %   'stage1_pair'    passive Lanini pair (no CPG, no leg damper)          Stage 1
 %   'stage2_single'  one walker with leg damper + CPG push-off             Stage 2
 %   'stage3_pair'    two CPG walkers coupled by the object (first look)    Stage 3
+%   'stage2_run'     one RUNNER (flight phase on, k = 20 kN/m, a0 = 68 deg, 5 m/s)   exploratory
+%   'stage3_run'     two coupled runners                                              exploratory
 %
 % Leg model switch (energy sink of the CPG walker; Stage 2 and 3 only):
 %   'damper'    leg damper c in stance, massless swing leg held at a0 (our Stage 2 choice)
@@ -29,12 +31,23 @@
 %                the same gait in its own time scale.  Lanini instead searched k and a0 for each
 %                pendulum (Sec. 4.1, step 3); their per-subject values are not in the paper.
 %
-% Initial lag:
+% Initial conditions of the pair (the walkers' parameters stay identical; only the start differs):
 %   lag0 = []    both walkers start at an apex on leg 1 at t = 0 (in step)
 %   lag0 = 90    each walker first walks alone for 2 strides (sp_start_state.m), walker 2 a further
 %                (360 - lag0)/360 of a stride, so the pair starts with a stride lag of about lag0 deg
+%   stance0 = [s1 s2]   leg (1 = right, 2 = left) that walker 1 and 2 stand on at t = 0;
+%                default [1 1].  [1 2]: walker 2 starts on the other leg (trot-like labels).
+%                In 2-D this only relabels the legs (stride lag + 180 deg), the body motion is
+%                the same (Lanini 2017 Sec. 5.3).
+%   dE_set       energy difference between the walkers [J] (walker 1: E0 - dE, walker 2: E0 + dE).
+%                Default: 5 J for the passive Stage 1 pair (Lanini Table 5), 0 for the CPG pair.
 %
-% Example:  preset = 'stage3_pair'; legmodel = 'damper'; pairtype = 'different'; lag0 = 90;
+% 'stage3_pair' with pairtype 'identical' (the default) makes the two walkers exactly alike:
+% same body (m, l0, k, a0), same leg damper / foot, same push-off dl and the same CPG clock
+% (omega, sigma, beta, th_TD, th_on, th_ramp, th_hold) and the same start energy.  The two
+% walkers then differ only in their initial conditions (lag0, stance0).
+%
+% Example:  preset = 'stage3_pair'; legmodel = 'damper'; lag0 = 45; stance0 = [1 2];
 %           cpg_pair_params
 %
 
@@ -42,6 +55,8 @@ if ~exist('preset', 'var') || isempty(preset), preset = 'stage1_pair'; end
 if ~exist('legmodel', 'var') || isempty(legmodel), legmodel = 'damper'; end
 if ~exist('pairtype', 'var') || isempty(pairtype), pairtype = 'identical'; end
 if ~exist('lag0', 'var'), lag0 = []; end
+if ~exist('stance0', 'var') || isempty(stance0), stance0 = [1 1]; end
+if ~exist('dE_set', 'var'), dE_set = []; end
 
 mp = [];
 
@@ -82,6 +97,7 @@ mp.h_sw  = 0.08;       % [m]     foot lift at mid-swing (ground clearance)
 
 % Model options
 % -------------
+mp.flight  = 0;        %         1 = allow a flight phase (running presets); 0 = flight is a fall (walking)
 mp.nW      = 2;        %         number of walkers (1 or 2)
 mp.coupled = 1;        %         1 = arms + object active
 mp.z_fail  = 0.5;      % [l0]    CoM below 0.5 l0 = fall
@@ -93,6 +109,7 @@ mp.gif     = 0;        %         1 = also write cpg_pair.gif
 % Initial conditions: both walkers at an apex of single support on leg 1
 % ----------------------------------------------------------------------
 y0 = 0.9708;           % [m]   apex height of the single-walker fixed point (Stage 1a result)
+v_set = [];            % [m/s] apex speed set directly (running presets); [] = from the energy E0
 dE = 5;                % [J]   walker 1 gets E0 - dE, walker 2 gets E0 + dE
 E0 = 816;              % [J]   Geyer 2006 Fig. 3A
 D  = 2.0;              % [m]   initial distance walker 1 -> walker 2
@@ -105,12 +122,29 @@ switch preset
         mp.cpg = 1;  mp.c = 100;  mp.dl = 0.01;
     case 'stage3_pair'
         mp.cpg = 1;  mp.c = 100;  mp.dl = 0.01;
-        mp.omega = 2*pi*[1 1];         % try e.g. 2*pi*[1 1.05] for a frequency mismatch
+        mp.omega = 2*pi*[1 1];         % same CPG clock for both walkers (2*pi*[1 1.05] = mismatch)
+        dE = 0;                        % same start energy for both walkers
+    case {'stage2_run', 'stage3_run'}
+        % RUNNING (exploratory): spring-mass runner of Seyfarth et al. 2002 / Geyer 2006 Fig. 3B
+        % (k = 20 kN/m, a0 = 68 deg, 5 m/s, apex in flight), leg damper + CPG push-off from
+        % mid-stance, flight phase allowed.  Start at a flight apex, leg 1 lands first.
+        % The CPG numbers below are placeholders (stride 0.7 s, duty factor 0.3), not fitted.
+        mp.k = 20e3;  mp.a0 = 68*pi/180;  mp.flight = 1;
+        mp.cpg = 1;  mp.c = 100;  mp.dl = 0.02;
+        mp.beta = 0.3;  mp.th_TD = 2*pi*(1 - mp.beta);
+        mp.th_on = mp.th_TD + 0.5*2*pi*mp.beta;   % push-off starts half way through stance
+        mp.th_ramp = 0.4;  mp.th_hold = 2.0;
+        mp.omega = 2*pi/0.7*[1 1];
+        y0 = 1.00;  v_set = 5.0;  dE = 0;         % flight apex height and speed (Seyfarth 2002)
+        if strcmp(preset, 'stage2_run'), mp.nW = 1;  mp.coupled = 0; end
     otherwise
         error('unknown preset %s', preset);
 end
 phi_start = 3*pi/2;                    % CPG phase at t = 0 (leg 1 in stance)
+if mp.flight > 0.5, phi_start = mp.th_TD - 1.1; end   % running: leg 1 lands about 0.12 s after the apex
 if ~isempty(lag0), dE = 0; end         % lag tests: both walkers start with their own fixed-point energy
+if ~isempty(dE_set), dE = dE_set; end  % explicit choice
+if exist('dl_set', 'var') && ~isempty(dl_set), mp.dl = dl_set; end   % push-off override [m]
 
 switch legmodel
     case 'damper'
@@ -152,10 +186,16 @@ mp.a0    = mp.a0*[1 1];
 mp.m     = body_m;  mp.l0 = body_l;
 y0i = y0*sl;                              % apex height
 Ei  = [E0 - dE, E0 + dE].*sm.*sl;         % energy ~ m g l0
+if strcmp(pairtype, 'identical')          % make sure nothing differs between the walkers
+    for f = {'m', 'l0', 'k', 'a0', 'c', 'dl', 'mf', 'Ksw', 'Dsw', 'h_sw', 'omega'}
+        assert(mp.(f{1})(1) == mp.(f{1})(2), 'identical pair: %s differs between the walkers', f{1});
+    end
+end
 
 % apex speed from the energy (Geyer 2006 App. A(b)), leg vertical at the apex
 vapex = @(E, i) sqrt(2*E/mp.m(i) - mp.k(i)/mp.m(i)*(mp.l0(i) - y0i(i))^2 - 2*mp.g*y0i(i));
 v1 = vapex(Ei(1), 1);  v2 = vapex(Ei(2), 2);
+if ~isempty(v_set), v1 = v_set;  v2 = v_set; end
 
 ic = [];
 ic.pos  = [0; y0i(1); D; y0i(2); D/2];    % [x1 z1 x2 z2 xo]
@@ -167,12 +207,15 @@ mp.phi0  = ic.phi.';
 mp.init  = zeros(1, 50);                  % start state from sp_start_state (when lag0 is set)
 mp.init_use = [0 0];
 mp.L0    = [ic.pos(5) - ic.pos(1), ic.pos(3) - ic.pos(5)];   % arm rest lengths (arms start relaxed)
+if mp.flight > 0.5, [ic, mp] = sp_flight_start(mp, ic); end  % running: start at a flight apex
 
-% Start with a chosen stride lag (each walker walks alone first, then the pair starts)
+% Start with a chosen stride lag and stance legs (each walker walks alone first, then the pair starts)
 mp.lag0 = NaN;                            % for the animation title only
-if ~isempty(lag0)
+mp.stance0 = [1 1];
+if ~isempty(lag0) || any(stance0 ~= 1)
+    if isempty(lag0), lag0 = 0; end
     mp.lag0 = lag0;
-    [ic, mp] = sp_start_state(mp, ic, lag0);
+    [ic, mp] = sp_start_state(mp, ic, lag0, stance0);
 end
 
 % Simulation
@@ -182,6 +225,7 @@ dtsim    = mp.dt;      % [s]   fixed step (ode4)
 rtf_anim = 1;          %       animation speed: 1 = real time, 0.5 = slow motion
 
 lm = {'leg damper', 'foot mass'};
-if isempty(lag0), lagtxt = 'in step at an apex'; else, lagtxt = sprintf('initial lag %g deg', lag0); end
-fprintf('cpg_pair_params: preset ''%s'', %s, %s walkers, %s (walkers: %d, coupled: %d, CPG: %d)\n', ...
-        preset, lm{mp.legmodel}, pairtype, lagtxt, mp.nW, mp.coupled, mp.cpg);
+if isempty(lag0), lagtxt = 'in step at an apex';
+else, lagtxt = sprintf('initial lag %g deg, stance legs [%d %d]', lag0, stance0(1), stance0(2)); end
+fprintf('cpg_pair_params: preset ''%s'', %s, %s walkers, dE = %g J, %s (walkers: %d, coupled: %d, CPG: %d)\n', ...
+        preset, lm{mp.legmodel}, pairtype, dE, lagtxt, mp.nW, mp.coupled, mp.cpg);

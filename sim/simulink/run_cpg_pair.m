@@ -3,9 +3,10 @@
 % Change the preset and leg model here, or set them yourself and press Run in the model.
 
 preset   = 'stage3_pair';   % 'stage1_pair' | 'stage2_single' | 'stage3_pair'
-legmodel = 'footmass';          % 'damper' | 'footmass'   (Stage 2 and 3)
-pairtype = 'different';       % 'identical' | 'different' (Lanini Pair 05 bodies)
-lag0     = [];                % [] = start in step at an apex;  e.g. 90 = start with a 90 deg stride lag
+legmodel = 'damper';        % 'damper' | 'footmass'   (Stage 2 and 3)
+pairtype = 'identical';     % 'identical' (same parameters and CPG clock) | 'different' (Lanini Pair 05 bodies)
+lag0     = [];              % [] = start in step at an apex;  e.g. 90 = start with a 90 deg stride lag
+stance0  = [1 1];           % leg each walker stands on at t = 0: [1 1] pace-like, [1 2] trot-like labels
 
 cpg_pair_params;
 

@@ -22,8 +22,11 @@ function [legs, phi, stop, td, work, state] = sp_logic_block(pos, vel, mp)
 %            25-28 Fh   [Fx1 Fz1 Fx2 Fz2] force of the swing feet on the bodies
 %            29-32 tTD  time of the last touchdown  33-36 tTO  time of the last take-off
 %          phi  = CPG phase of walker 1 and 2, wrapped to [0, 2 pi)
-%          stop = 0 walking, 1 flight in single support, 2 walked backward,
-%                 3 leading leg lifted off, 4 collapsed
+%          stop = 0 walking, 1 flight in single support (only when mp.flight = 0), 2 walked
+%                 backward, 3 leading leg lifted off, 4 collapsed
+%          mp.flight = 1 allows a flight phase (running): the stance leg takes off when its force
+%                 reaches 0, and the other leg lands when z falls through l0 sin(a0) (damper model)
+%                 or when its foot reaches the ground (foot model)
 %          td   = leg that touched down in this step (0 = none), per walker
 %          work = [push-off work, hip (swing) work, leg losses at events, swing-foot energy] [J]
 %                 leg losses at events = foot impacts (foot model) + spring energy left in
@@ -108,11 +111,25 @@ if stopped == 0
         end
 
         nc = c(i,1) + c(i,2);
-        if nc < 1.5                                   % ---- single support
-            s = 1;  if c(i,2) > 0.5, s = 2; end
-            w = 3 - s;
-            if F(s) < 0
-                stopped = 1;
+        if nc < 1.5                                   % ---- flight (nc = 0) or single support (nc = 1)
+            if nc < 0.5                               % flight: the leg that took off first lands next
+                s = 0;  w = 1;  if tTO(i,2) < tTO(i,1), w = 2; end
+            else
+                s = 1;  if c(i,2) > 0.5, s = 2; end
+                w = 3 - s;
+            end
+            if s > 0 && F(s) <= 0 && mp.flight > 0.5  % take-off into flight (running, mp.flight = 1)
+                c(i,s) = 0;  tTO(i,s) = t;
+                lr = sqrt((f(i,s) - x)^2 + z^2);
+                if lamp(i,s) > lr                     % spring energy left in the leg: lost
+                    W(3) = W(3) + 0.5*mp.k(i)*(lamp(i,s) - lr)^2;
+                end
+                thTO(i,s) = mod(ph(i) + (s-1)*pi, 2*pi);
+                xTO(i,s) = f(i,s);
+                xf(i,s) = f(i,s);  zf(i,s) = 0;  vxf(i,s) = 0;  vzf(i,s) = 0;
+                f(i,s) = 0;
+            elseif s > 0 && F(s) < 0
+                stopped = 1;                          % flight in single support = failure when walking
             elseif xd <= 0
                 stopped = 2;
             elseif z < mp.z_fail*l0

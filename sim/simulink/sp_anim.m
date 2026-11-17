@@ -1,4 +1,4 @@
-function sp_anim(block)
+function varargout = sp_anim(block)
 %
 % Level-2 MATLAB S-function: animation of the paired spring-mass walkers
 % (same block interface as the course animation m07_anim.m, H. Geyer).
@@ -29,6 +29,13 @@ function sp_anim(block)
 %
 % The drawing state is kept in the figure (setappdata), not in persistent variables.
 %
+% sp_anim('handles') returns the Start / Update / Terminate functions so a logged run can be
+% replayed through the same drawing code without Simulink (see sp_anim_replay.m).
+%
+if ischar(block)
+  varargout{1} = struct('Start', @Start, 'Update', @Update, 'Terminate', @Terminate, 'fig_name', @fig_name);
+  return
+end
 setup(block);
 end
 
