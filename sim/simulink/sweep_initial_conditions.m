@@ -20,6 +20,7 @@ if ~exist('sw_tag', 'var'),      sw_tag = ''; end
 if ~exist('sw_dE', 'var'),       sw_dE = 0; end          % energy difference [J] (0 = identical start energy)
 if ~exist('sw_preset', 'var') || isempty(sw_preset), sw_preset = 'stage3_pair'; end   % or 'stage3_run'
 if ~exist('sw_dl', 'var'),       sw_dl = []; end         % push-off dl override [m] ([] = preset value)
+if ~exist('sw_sigma', 'var'),    sw_sigma = []; end      % CPG load-feedback gain sigma ([] = preset value, 0)
 if ~exist('sw_out', 'var') || isempty(sw_out)
     sw_out = fullfile(fileparts(mfilename('fullpath')), '..', 'results', ['ic_sweep_' sw_legmodel sw_tag]);
     if ~exist('sw_preset', 'var') || isempty(sw_preset) || strcmp(sw_preset, 'stage3_pair'), else
@@ -34,6 +35,7 @@ for is = 1:numel(sw_stance)
         preset = sw_preset;  legmodel = sw_legmodel;  pairtype = 'identical';
         lag0 = sw_lags(il);  stance0 = sw_stance{is};  dE_set = sw_dE;
         if ~isempty(sw_dl), dl_set = sw_dl; else, clear dl_set; end
+        if ~isempty(sw_sigma), sigma_set = sw_sigma; else, clear sigma_set; end
         cpg_pair_params;
         R = sp_fixedstep_check(sw_tEnd, mp, ic);
         G = sp_gait_class(R, mp, sw_tEnd);
@@ -44,7 +46,7 @@ for is = 1:numel(sw_stance)
     end
 end
 sweep.S = S;  sweep.legmodel = sw_legmodel;  sweep.tEnd = sw_tEnd;  sweep.lags = sw_lags;
-sweep.stance = sw_stance;  sweep.dE = sw_dE;  sweep.preset = sw_preset;  sweep.dl = sw_dl;
+sweep.stance = sw_stance;  sweep.dE = sw_dE;  sweep.preset = sw_preset;  sweep.dl = sw_dl;  sweep.sigma = sw_sigma;
 sweep.date = datestr(now);   %#ok<TNOW1,DATST>
 [d, ~] = fileparts(sw_out);  if ~exist(d, 'dir'), mkdir(d); end
 save([sw_out '.mat'], 'sweep');

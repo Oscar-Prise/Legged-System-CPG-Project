@@ -10,6 +10,7 @@ function R = sp_fixedstep_check(tEnd, mp, ic)
 % R.Ebal = E_mech + arm loss + leg-damper loss + event losses - push-off work - hip work
 % should stay constant (R.Ebal - R.Ebal(1) = numerical error).
 % R.q_end, R.state_end: continuous and discrete state at the last step (for sp_start_state).
+% R.state: the discrete state at every logged sample (used by sp_pair_poincare).
 
 if nargin < 2, mp = evalin('base', 'mp'); end
 if nargin < 3, ic = evalin('base', 'ic'); end
@@ -19,6 +20,7 @@ q  = [ic.pos; ic.vel; 0; 0];                % [pos(5) vel(5) Earm Eleg]
 dec = 10;  m = floor(n/dec) + 1;
 R.t = zeros(m, 1);  R.pos = zeros(m, 5);  R.vel = zeros(m, 5);  R.phi = zeros(m, 2);
 R.Eloss = zeros(m, 2);  R.legs = zeros(m, 36);  R.work = zeros(m, 4);  R.Ebal = zeros(m, 1);
+R.state = zeros(m, 50);                     % full discrete gait state (see sp_logic_block)
 R.td = zeros(0, 3);  R.stop = 0;
 k = 0;
 for s = 0:n
@@ -29,7 +31,7 @@ for s = 0:n
         k = k + 1;
         R.t(k) = t;  R.pos(k, :) = q(1:5).';  R.vel(k, :) = q(6:10).';
         R.phi(k, :) = phi.';  R.Eloss(k, :) = q(11:12).';  R.legs(k, :) = legs.';
-        R.work(k, :) = work.';
+        R.work(k, :) = work.';  R.state(k, :) = state.';
         R.Ebal(k) = energy(q, legs, mp) + work(4) + q(11) + q(12) + work(3) - work(1) - work(2);
     end
     R.q_end = q;  R.state_end = state;  R.t_end = t;

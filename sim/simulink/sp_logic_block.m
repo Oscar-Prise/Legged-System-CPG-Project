@@ -41,7 +41,7 @@ function [legs, phi, stop, td, work, state] = sp_logic_block(pos, vel, mp)
 %
 % CPG (Owaki & Ishiguro 2017 Eq. 1; leg j phase theta_j = phi + (j-1) pi):
 %   dphi/dt = omega - sigma sum_j N_j cos(theta_j),  N_j = vertical GRF [body weights]
-%   touchdown of leg j:  theta_j <- th_TD  (Aoi & Tsuchiya 2007)
+%   touchdown of leg j:  theta_j <- th_TD  (Aoi & Tsuchiya 2007)   [only if mp.reset = 1, the default]
 % Swing (foot model): progress s = (theta - theta_TO)/(th_TD - theta_TO) in [0, 1];
 %   foot target  r*(s) = (1 - b) r_TO + b (r_hip + l0 [cos a0, -sin a0]) + h_sw sin^2(pi s) e_z,
 %   b = 3s^2 - 2s^3, r_TO = where the foot left the ground.  The target starts at rest on the
@@ -87,6 +87,7 @@ td = [0; 0];
 Fh = zeros(4, 1);
 foot = mp.legmodel > 1.5;
 osc = mp.cpg > 0.5 || foot;                  % the foot model always needs the phase (swing timing)
+rs = 1;  if isfield(mp, 'reset'), rs = mp.reset; end   % 1 = phase reset at touchdown, 0 = free-running CPG
 
 if stopped == 0
     for i = 1:mp.nW
@@ -139,7 +140,7 @@ if stopped == 0
                 f(i,w) = x + l0*cos(a0);
                 lb(i,w) = l0;  lamp(i,w) = l0;
                 td(i) = w;  tTD(i,w) = t;
-                if osc, ph(i) = mod(mp.th_TD - (w-1)*pi, 2*pi); end
+                if osc && rs > 0.5, ph(i) = mod(mp.th_TD - (w-1)*pi, 2*pi); end
             elseif foot && swing_progress(ph(i) + (w-1)*pi, thTO(i,w), mp) > 0.5 ...
                     && zf(i,w) <= 0 && vzf(i,w) < 0                   % touchdown, foot model
                 W(3) = W(3) + 0.5*mf*(vxf(i,w)^2 + vzf(i,w)^2);      % foot stops: impact loss
@@ -147,7 +148,7 @@ if stopped == 0
                 f(i,w) = xf(i,w);  zf(i,w) = 0;  vxf(i,w) = 0;  vzf(i,w) = 0;
                 lb(i,w) = sqrt((x - xf(i,w))^2 + z^2);  lamp(i,w) = lb(i,w);   % no force jump
                 td(i) = w;  tTD(i,w) = t;
-                ph(i) = mod(mp.th_TD - (w-1)*pi, 2*pi);
+                if rs > 0.5, ph(i) = mod(mp.th_TD - (w-1)*pi, 2*pi); end
             end
         else                                          % ---- double support
             r = 1;  if f(i,2) < f(i,1), r = 2; end    % trailing leg

@@ -123,6 +123,59 @@ then `make_result_figures` and `make_result_videos`; the animation is replayed w
 | `video_run_lag30_to_halfstep.*`, `video_run_lag0_in_step.*` | running pair locks half a step apart; in-step start stays (unstable) |
 | `video_sweep_walking.*`, `video_sweep_running.*` | six starts side by side with the lag traces and a time cursor |
 
+### Poincaré-map check of the gaits (`sp_pair_poincare.m`, `run_poincare_check.m`, `run_poincare_full.m`)
+
+Full return map of the pair, section = walker 1's apex, state = (z1, dx1, x2−x1, z2, dx2, dz2, xo−x1, dxo,
+φ1, φ2, stance-foot offsets [+ swing-foot state for the foot model]), Jacobian by central differences
+(dt = 2e-5 s), fixed point refined by Newton.  And the 1-D stroboscopic map of the lag from the sweep
+data (`fig_poincare_lag_map.png`): lag_{n+1} − lag_n ≈ −A sin(2 lag), slope 1 ∓ 2A at the fixed points.
+
+| gait (leg damper, σ = 0) | full map max \|λ\| | 1-D lag map slope | verdict |
+|---|---|---|---|
+| walking in step | 0.962 (lag mode: φ2, dz2) then 0.85, 0.85, 0.63 … and 0 for the reset phases | 0.957 | stable |
+| walking half step | 1.05 | 1.043 | unstable |
+| running half step | 0.99 (Newton residual 1e-3, noisy) | 0.905 | stable |
+| running in step | 1.00 (Newton did not converge; map noise) | 1.095 | unstable (from the 1-D map) |
+| walking foot mass, σ = 0, in step | no converged fixed point (residual 1e-2; leading modes 0.996 on the swing-foot velocity) | 0.869 | lag mode stable; the walker itself is not on a settled cycle |
+| walking foot mass, σ = 3, in step | no fixed point (residual 1e-1, Newton diverges) | — | not a periodic gait: consistent with the σ = 3 sweep (28/48 fall) |
+| leg damper, σ = 3, in step | 0.952 | — | stable, same as σ = 0 |
+
+The foot-mass model (the proposal's full model) therefore cannot be certified by the return map yet: its single
+walker is not on a converged limit cycle (README above: stride time still drifting after 40 s) and with σ = 3 it
+wanders.  Tuning the swing servo / foot mass / push-off until `stage2_single` with `legmodel = 'footmass'` has a
+clean fixed point is the prerequisite (`fig_poincare_eigs_full.png`, `poincare_full.mat`).
+
+The lag mode is the slowest mode of the whole pair (walking: 0.96 per stride against 0.85 for the next
+mode), which is why the sweeps need ~100 s to settle.  Event quantisation of the fixed-step integrator
+limits the full map to about 1e-3 accuracy, so for running the 1-D map is the better number.
+
+### Which CPG model the sweeps used, and the load feedback
+
+All sweeps above used the touchdown reset and **σ = 0** (no load feedback; the Owaki term was off).
+The foot-mass sweep is otherwise the proposal's full model (point feet, CPG-driven swing, CPG push-off);
+the leg-damper sweep is the fallback model (massless swing leg at a0, damper sink).  Re-run with
+**σ = 3** (`sw_sigma = 3`, files `ic_sweep_*_sig3*`):
+
+| model, σ = 3 | result vs σ = 0 |
+|---|---|
+| leg damper | identical to σ = 0 within 0.02 deg/s (the reset at every touchdown leaves the feedback nothing to do) |
+| foot mass | worse: 28 of 48 starts fall (σ = 0: 12). Only starts within ±30 deg of in-step survive; several reach in-step by 6 s and then fall at 8–18 s. The single foot-mass walker with σ = 3 does not settle either (stride time wanders 0.89–0.91 s). |
+
+### Initial CPG phase sweep (`sweep_cpg_phase.m`, `plot_cpg_phase_sweep.m`, `fig_cpg_phase_sweep.png`)
+
+Both walkers start mechanically in step at the same apex state; only the two CPG clocks start at
+different phases φ1(0), φ2(0) ∈ {0, π/4, …, 7π/4} (64 starts, leg damper, 30 s).  Needs the new
+switches `reset_set` (1 = reset at touchdown, 0 = free-running CPG) and `phi0_set = [φ1 φ2]`.
+
+| CPG | falls | final pattern | transient |
+|---|---|---|---|
+| reset at TD, σ = 0 | 0 / 64 | all in step | a phase mismatch only changes the first step's push-off: offset up to 52 deg, gone within 20 s |
+| reset at TD, σ = 3 | 0 / 64 | all in step | same, settles slightly faster |
+| free-running, σ = 3 (no reset) | 29 / 64 | all survivors in step | falls are a single-walker effect: a clock started at ≈ 0.75 π (push-off fires mid-stance of the first step) makes that walker fall whatever its partner does; survivors show offsets up to 90 deg before locking |
+
+A free-running CPG with σ = 0 cannot walk alone (falls at 12.6 s); σ ≥ 3 entrains the clock to the gait
+(phase at touchdown locks to a constant), so the load-feedback rule works as the only coupling, as in Owaki 2017.
+
 Other initial conditions not swept yet (all can be set in `cpg_pair_params`): the energy/speed difference
 `dE_set` (Lanini used ±15 J), the object's initial position and velocity (arms pre-stretched: `ic.pos(5)`, `ic.vel(5)`),
 the apex height / vertical velocity of each walker (a kick off the limit cycle), the CPG phase itself (only matters

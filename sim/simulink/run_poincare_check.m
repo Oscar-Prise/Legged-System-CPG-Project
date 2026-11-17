@@ -22,12 +22,16 @@ for n = 1:size(cases, 1)
     R = sp_fixedstep_check(cases{n, 5}, mp, ic);
     G = sp_gait_class(R, mp, cases{n, 5});
     fprintf('run: %s, lag_end %.1f deg\n', G.label, G.lag_end);
-    P = sp_pair_poincare(mp, R);
+    try
+        P = sp_pair_poincare(mp, R);
+        v = abs(P.V(:, 1));  [~, o] = sort(v, 'descend');   % which coordinates the leading eigenvector lives on
+        P.lead = sprintf('%s %.2f, %s %.2f, %s %.2f', P.names{o(1)}, v(o(1)), P.names{o(2)}, v(o(2)), P.names{o(3)}, v(o(3)));
+        fprintf('leading |eig| = %.4f (%s)\n', abs(P.lam(1)), P.lead);
+    catch ME
+        fprintf('Poincare map failed: %s\n', ME.message);
+        P = struct('ok', false, 'lam', NaN, 'resid', NaN, 'T', NaN, 'lead', ME.message, 'names', {{}});
+    end
     P.name = cases{n, 1};  P.lag_run = G.lag_end;
-    % which coordinates the leading eigenvector lives on
-    v = abs(P.V(:, 1));  [~, o] = sort(v, 'descend');
-    P.lead = sprintf('%s %.2f, %s %.2f, %s %.2f', P.names{o(1)}, v(o(1)), P.names{o(2)}, v(o(2)), P.names{o(3)}, v(o(3)));
-    fprintf('leading |eig| = %.4f (%s)\n', abs(P.lam(1)), P.lead);
     Pc{n} = P;
 end
 save(fullfile(res, 'poincare_pairs.mat'), 'Pc');
@@ -39,11 +43,15 @@ for n = 1:4
     P = Pc{n};
     subplot(1, 4, n); hold on; axis equal; grid on;
     plot(cos(th), sin(th), '-', 'Color', [.6 .6 .6]);
-    plot(real(P.lam), imag(P.lam), 'o', 'MarkerFaceColor', [0.12 0.47 0.71], 'Color', [0.12 0.47 0.71], 'MarkerSize', 6);
-    plot(real(P.lam(1)), imag(P.lam(1)), 'o', 'Color', [0.84 0.15 0.16], 'MarkerSize', 11, 'LineWidth', 1.5);
+    if isfield(P, 'ok') && P.ok
+        plot(real(P.lam), imag(P.lam), 'o', 'MarkerFaceColor', [0.12 0.47 0.71], 'Color', [0.12 0.47 0.71], 'MarkerSize', 6);
+        plot(real(P.lam(1)), imag(P.lam(1)), 'o', 'Color', [0.84 0.15 0.16], 'MarkerSize', 11, 'LineWidth', 1.5);
+        if P.resid > 2e-3, v = sprintf('inconclusive, residual %.0e', P.resid); elseif max(abs(P.lam)) < 1, v = 'STABLE'; else, v = 'UNSTABLE'; end
+        title(sprintf('%s\nmax |\\lambda| = %.3f  (%s)', P.name, max(abs(P.lam)), v), 'FontWeight', 'normal', 'FontSize', 9);
+    else
+        title(sprintf('%s\nno fixed point found', P.name), 'FontWeight', 'normal', 'FontSize', 9);
+    end
     xlim([-1.3 1.3]); ylim([-1.3 1.3]);
-    if max(abs(P.lam)) < 1, v = 'STABLE'; else, v = 'UNSTABLE'; end
-    title(sprintf('%s\nmax |\\lambda| = %.3f  (%s)', P.name, max(abs(P.lam)), v), 'FontWeight', 'normal', 'FontSize', 9);
     xlabel('Re \lambda'); if n == 1, ylabel('Im \lambda'); end
 end
 sgtitle('Return map of the coupled pair at walker 1''s apex: eigenvalues of the numerical Jacobian (red ring = largest)');
@@ -85,7 +93,7 @@ for s = 1:3
     xlabel('lag_n [deg]'); if s == 1, ylabel('lag_{n+1} - lag_n [deg/stride]'); end
     title(sprintf('fit %+.2f sin(2 lag):  slope at 0/180 = %.3f, at 90/270 = %.3f', -A, lam_in, lam_half), 'FontWeight', 'normal', 'FontSize', 9);
 end
-sgtitle('Stroboscopic return map of the stride lag (section: walker 1 right-foot touchdown); fixed points where the map meets the diagonal, stable where the slope is < 1');
+sgtitle({'Stroboscopic return map of the stride lag (section: walker 1 right-foot touchdown)', 'fixed points where the map meets the diagonal; stable where the slope is below 1'}, 'FontSize', 11);
 print(f2, '-dpng', '-r140', fullfile(res, 'fig_poincare_lag_map.png'));
 save(fullfile(res, 'poincare_pairs.mat'), 'Pc', 'lagmap');
 

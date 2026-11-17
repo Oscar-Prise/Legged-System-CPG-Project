@@ -81,6 +81,7 @@ mp.cpg     = 0;                    %         1 = CPG push-off on
 mp.dl      = 0;                    % [m]     push-off leg extension
 mp.omega   = 2*pi*[1 1];           % [rad/s] CPG frequency of walker 1 and 2 (one cycle = one stride)
 mp.sigma   = 0;                    % [rad/s per body weight] load feedback gain
+mp.reset   = 1;                    %         1 = CPG phase reset at touchdown (Aoi 2007), 0 = free-running CPG
 mp.beta    = 0.69;                 %         nominal duty factor
 mp.th_TD   = 2*pi*(1 - mp.beta);   % [rad]   leg phase after touchdown reset
 mp.th_on   = mp.th_TD + pi + 0.1;  % [rad]   push-off starts (just after the other leg lands)
@@ -145,6 +146,8 @@ if mp.flight > 0.5, phi_start = mp.th_TD - 1.1; end   % running: leg 1 lands abo
 if ~isempty(lag0), dE = 0; end         % lag tests: both walkers start with their own fixed-point energy
 if ~isempty(dE_set), dE = dE_set; end  % explicit choice
 if exist('dl_set', 'var') && ~isempty(dl_set), mp.dl = dl_set; end   % push-off override [m]
+if exist('sigma_set', 'var') && ~isempty(sigma_set), mp.sigma = sigma_set; end   % load-feedback gain override
+if exist('reset_set', 'var') && ~isempty(reset_set), mp.reset = reset_set; end   % touchdown reset on/off
 
 switch legmodel
     case 'damper'
@@ -202,6 +205,7 @@ ic.pos  = [0; y0i(1); D; y0i(2); D/2];    % [x1 z1 x2 z2 xo]
 ic.vel  = [v1; 0; v2; 0; (v1 + v2)/2];    % [dx1 dz1 dx2 dz2 dxo]
 ic.foot = [0; D];                         % stance (leg 1) foot of walker 1 and 2
 ic.phi  = phi_start*[1; 1];               % CPG phase
+if exist('phi0_set', 'var') && ~isempty(phi0_set), ic.phi = phi0_set(:); end   % initial CPG phases [phi1 phi2]
 mp.foot0 = ic.foot.';                     % read by the gait-logic block at t = 0
 mp.phi0  = ic.phi.';
 mp.init  = zeros(1, 50);                  % start state from sp_start_state (when lag0 is set)
