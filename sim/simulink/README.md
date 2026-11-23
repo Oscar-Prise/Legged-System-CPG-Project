@@ -123,6 +123,38 @@ then `make_result_figures` and `make_result_videos`; the animation is replayed w
 | `video_run_lag30_to_halfstep.*`, `video_run_lag0_in_step.*` | running pair locks half a step apart; in-step start stays (unstable) |
 | `video_sweep_walking.*`, `video_sweep_running.*` | six starts side by side with the lag traces and a time cursor |
 
+### H2: entrainment (`run_h2_entrainment.m`; everything H2 goes to `sim/results/h2/`: `h2_*.mat`, `fig_h2_*.png`, `video_h2_*`)
+
+Leg-damper legs, identical walkers.  **Part A** (matched clocks) sweeps which leg each walker stands on at
+t = 0 (`stance0`) and the initial lag; the pair should lock in step, read as pace (same legs) or trot
+(opposite legs).  **Part B** (mismatched clocks, `omega_ratio_set` = ω2/ω1) starts in step and sweeps the
+ratio 0.9–1.2 for two CPG variants: the model as built (touchdown reset, σ = 0) and a free-running CPG with
+load feedback (reset 0, σ = 3).  Reported per run: locked / slipping, locked lag, drift, and the stride time
+of each walker (equal = one shared rhythm).
+
+    h2_part = 'A'; run_h2_entrainment          % or 'B' or 'AB'; settings h2_lags, h2_stance, h2_ratios, h2_cpg, h2_tEndA/B
+
+Results (2026-11-22, 60 s runs; `plot_h2_matched.m`, `plot_h2_mismatch.m` regenerate the figures from the .mat):
+
+**Part A** (24 starts): no falls; 6 locked as pace, 6 as trot, 12 still converging to in-step at 60 s (the
+90 deg starts are slowest, as in the IC sweep).  Same stance legs → pace, opposite legs → trot, with identical
+drift rates (−0.35 / −1.14 / +0.37 deg/s for the 60 / 90 / 120 deg starts in all four combinations).
+
+**Part B** (ω2/ω1 = 0.90 … 1.20):
+
+| CPG variant | result |
+|---|---|
+| reset at TD, σ = 0 (model as built) | locked in step for every ratio 0.90–1.15 (lag within 6 deg, stride times equal to 1e-4 s); slow slip (0.7 deg/s) only at 1.20. The lag does **not** grow with mismatch: the reset rewrites the clock each step, so ω only nudges the push-off timing. |
+| free-running, σ = 3 | locked in step only at 1.00; small mismatches (0.95–0.97, 1.01–1.03) make the pair **fall** at 18–47 s; 0.98–0.99 slip slowly; 1.05–1.10 re-lock with one shared rhythm (stride 1.11 s) one step apart (lag 170–192 deg, i.e. in-step motion with swapped labels); 0.90, 1.15, 1.20 slip or fall. Nothing locks near 225 deg. |
+
+So the second half of H2 (lag growing with mismatch towards diagonal sequence) is not reproduced: with the
+reset the mismatch is inert, without it the lock is fragile and only in-step locks exist.
+
+Videos (`make_h2_videos.m`, in `sim/results/h2/`, mp4 + gif, first 6 s then t = 54–60 s): `video_h2_sweep_pace`
+(six lags, same stance legs → pace), `video_h2_sweep_trot` (same lags, opposite legs → trot),
+`video_h2_pace_lag60` / `video_h2_trot_lag60` (full animation of the two 60 deg cases), `video_h2_mismatch_reset`
+(six clock ratios, all in step), `video_h2_mismatch_free` (free-running CPG: fall, slip, re-lock one step apart).
+
 ### Poincaré-map check of the gaits (`sp_pair_poincare.m`, `run_poincare_check.m`, `run_poincare_full.m`)
 
 Full return map of the pair, section = walker 1's apex, state = (z1, dx1, x2−x1, z2, dx2, dz2, xo−x1, dxo,

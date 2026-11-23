@@ -39,6 +39,8 @@
 %                default [1 1].  [1 2]: walker 2 starts on the other leg (trot-like labels).
 %                In 2-D this only relabels the legs (stride lag + 180 deg), the body motion is
 %                the same (Lanini 2017 Sec. 5.3).
+%   omega_ratio_set   H2: walker 2's CPG clock rate relative to walker 1 (1 = matched, 1.05 = 5 % faster)
+%   sigma_set, reset_set, phi0_set, dl_set   load-feedback gain, touchdown reset on/off, initial CPG phases, push-off
 %   dE_set       energy difference between the walkers [J] (walker 1: E0 - dE, walker 2: E0 + dE).
 %                Default: 5 J for the passive Stage 1 pair (Lanini Table 5), 0 for the CPG pair.
 %
@@ -194,6 +196,8 @@ if strcmp(pairtype, 'identical')          % make sure nothing differs between th
         assert(mp.(f{1})(1) == mp.(f{1})(2), 'identical pair: %s differs between the walkers', f{1});
     end
 end
+% H2: CPG clock mismatch on otherwise identical walkers (omega2 = omega_ratio_set * omega1)
+if exist('omega_ratio_set', 'var') && ~isempty(omega_ratio_set), mp.omega(2) = omega_ratio_set*mp.omega(1); end
 
 % apex speed from the energy (Geyer 2006 App. A(b)), leg vertical at the apex
 vapex = @(E, i) sqrt(2*E/mp.m(i) - mp.k(i)/mp.m(i)*(mp.l0(i) - y0i(i))^2 - 2*mp.g*y0i(i));

@@ -5,7 +5,7 @@ function sp_sweep_movie(C, out, windows, caption, ttl)
 %
 %   sp_sweep_movie(C, '../results/sweep_walk', [0 6; 114 120], {'start', 'end'}, 'title')
 %
-% C = struct array (from make_result_cases.m) with fields R (thinned), mp, G, lag0.
+% C = struct array (from make_result_cases.m) with fields R (thinned), mp, G, lag0 (and optionally title).
 n = numel(C);  nc = 3;  nr = ceil(n/nc);
 if nargin < 3 || isempty(windows), windows = [C(1).R.t(1) C(1).R.t(end)]; end
 if nargin < 4, caption = repmat({''}, 1, size(windows, 1)); end
@@ -35,7 +35,8 @@ for q = 1:n
     H.obj(q) = plot(ax, 0, 0, 'o', 'MarkerSize', 8, 'MarkerFaceColor', 'k', 'MarkerEdgeColor', 'k');
     H.txt(q) = text(0.02, 0.93, '', 'Parent', ax, 'Units', 'normalized', 'FontSize', 9, 'Color', cmap(q,:), 'FontWeight', 'bold');
     ylim(ax, [-0.1 1.5]);  xlim(ax, [-1 4]);
-    title(ax, sprintf('start lag %g deg', C(q).lag0), 'FontSize', 9, 'FontWeight', 'normal', 'Color', cmap(q,:));
+    if isfield(C, 'title') && ~isempty(C(q).title), tq = C(q).title; else, tq = sprintf('start lag %g deg', C(q).lag0); end
+    title(ax, tq, 'FontSize', 9, 'FontWeight', 'normal', 'Color', cmap(q,:));
     if c == 1, ylabel(ax, 'z [m]'); end
     H.ax(q) = ax;
 end
